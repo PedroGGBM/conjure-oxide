@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SolverError"],"mod":["kissat","minion"],"struct":["Model"],"trait":["FromConjureModel"]};
