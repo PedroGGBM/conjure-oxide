@@ -378,7 +378,14 @@
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
 <a href="#378" id="378">378</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>conjure_core::{ast::Constant <span class="kw">as </span>Const, ast::Expression <span class="kw">as </span>Expr, rule::RuleApplicationError};
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>conjure_core::{
+    ast::Constant <span class="kw">as </span>Const, ast::Expression <span class="kw">as </span>Expr, metadata::Metadata, rule::RuleApplicationError,
+};
 <span class="kw">use </span>conjure_rules::register_rule;
 
 <span class="comment">/*****************************************************************************/
@@ -482,7 +489,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>changed = <span class="bool-val">false</span>;
             <span class="kw">for </span>e <span class="kw">in </span>exprs {
                 <span class="kw">match </span>e {
-                    Expr::Constant(Const::Int(i)) =&gt; {
+                    Expr::Constant(metadata, Const::Int(i)) =&gt; {
                         sum += i;
                         changed = <span class="bool-val">true</span>;
                     }
@@ -492,7 +499,8 @@
             <span class="kw">if </span>!changed {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(RuleApplicationError::RuleNotApplicable);
             }
-            new_exprs.push(Expr::Constant(Const::Int(sum)));
+            <span class="comment">// TODO (kf77): Get existing metadata instead of creating a new one
+            </span>new_exprs.push(Expr::Constant(Metadata::new(), Const::Int(sum)));
             <span class="prelude-val">Ok</span>(Expr::Sum(new_exprs)) <span class="comment">// Let other rules handle only one Expr being contained in the sum
         </span>}
         <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(RuleApplicationError::RuleNotApplicable),
@@ -682,10 +690,10 @@
             <span class="kw">let </span><span class="kw-2">mut </span>changed = <span class="bool-val">false</span>;
             <span class="kw">for </span>e <span class="kw">in </span>exprs {
                 <span class="kw">match </span>e {
-                    Expr::Constant(Const::Bool(val)) =&gt; {
+                    Expr::Constant(metadata, Const::Bool(val)) =&gt; {
                         <span class="kw">if </span><span class="kw-2">*</span>val {
                             <span class="comment">// If we find a true, the whole expression is true
-                            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(Expr::Constant(Const::Bool(<span class="bool-val">true</span>)));
+                            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(Expr::Constant(metadata.clone(), Const::Bool(<span class="bool-val">true</span>)));
                         } <span class="kw">else </span>{
                             <span class="comment">// If we find a false, we can ignore it
                             </span>changed = <span class="bool-val">true</span>;
@@ -718,10 +726,10 @@
             <span class="kw">let </span><span class="kw-2">mut </span>changed = <span class="bool-val">false</span>;
             <span class="kw">for </span>e <span class="kw">in </span>exprs {
                 <span class="kw">match </span>e {
-                    Expr::Constant(Const::Bool(val)) =&gt; {
+                    Expr::Constant(metadata, Const::Bool(val)) =&gt; {
                         <span class="kw">if </span>!<span class="kw-2">*</span>val {
                             <span class="comment">// If we find a false, the whole expression is false
-                            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(Expr::Constant(Const::Bool(<span class="bool-val">false</span>)));
+                            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(Expr::Constant(metadata.clone(), Const::Bool(<span class="bool-val">false</span>)));
                         } <span class="kw">else </span>{
                             <span class="comment">// If we find a true, we can ignore it
                             </span>changed = <span class="bool-val">true</span>;
@@ -750,7 +758,9 @@
 </span><span class="kw">fn </span>evaluate_constant_not(expr: <span class="kw-2">&amp;</span>Expr) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, RuleApplicationError&gt; {
     <span class="kw">match </span>expr {
         Expr::Not(contents) =&gt; <span class="kw">match </span>contents.as_ref() {
-            Expr::Constant(Const::Bool(val)) =&gt; <span class="prelude-val">Ok</span>(Expr::Constant(Const::Bool(!val))),
+            Expr::Constant(metadata, Const::Bool(val)) =&gt; {
+                <span class="prelude-val">Ok</span>(Expr::Constant(metadata.clone(), Const::Bool(!val)))
+            }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(RuleApplicationError::RuleNotApplicable),
         },
         <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(RuleApplicationError::RuleNotApplicable),

@@ -184,7 +184,11 @@
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>conjure_core::{ast::Constant <span class="kw">as </span>Const, ast::Expression <span class="kw">as </span>Expr, rule::RuleApplicationError};
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>conjure_core::{
+    ast::Constant <span class="kw">as </span>Const, ast::Expression <span class="kw">as </span>Expr, metadata::Metadata, rule::RuleApplicationError,
+};
 <span class="kw">use </span>conjure_rules::register_rule;
 
 <span class="comment">/************************************************************************/
@@ -306,7 +310,7 @@
         Expr::Lt(a, b) =&gt; <span class="prelude-val">Ok</span>(Expr::Ineq(
             a.clone(),
             b.clone(),
-            Box::new(Expr::Constant(Const::Int(-<span class="number">1</span>))),
+            Box::new(Expr::Constant(Metadata::new(), Const::Int(-<span class="number">1</span>))),
         )),
         <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(RuleApplicationError::RuleNotApplicable),
     }
@@ -325,7 +329,7 @@
         Expr::Gt(a, b) =&gt; <span class="prelude-val">Ok</span>(Expr::Ineq(
             b.clone(),
             a.clone(),
-            Box::new(Expr::Constant(Const::Int(-<span class="number">1</span>))),
+            Box::new(Expr::Constant(Metadata::new(), Const::Int(-<span class="number">1</span>))),
         )),
         <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(RuleApplicationError::RuleNotApplicable),
     }
@@ -344,7 +348,7 @@
         Expr::Geq(a, b) =&gt; <span class="prelude-val">Ok</span>(Expr::Ineq(
             b.clone(),
             a.clone(),
-            Box::new(Expr::Constant(Const::Int(<span class="number">0</span>))),
+            Box::new(Expr::Constant(Metadata::new(), Const::Int(<span class="number">0</span>))),
         )),
         <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(RuleApplicationError::RuleNotApplicable),
     }
@@ -363,7 +367,7 @@
         Expr::Leq(a, b) =&gt; <span class="prelude-val">Ok</span>(Expr::Ineq(
             a.clone(),
             b.clone(),
-            Box::new(Expr::Constant(Const::Int(<span class="number">0</span>))),
+            Box::new(Expr::Constant(Metadata::new(), Const::Int(<span class="number">0</span>))),
         )),
         <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(RuleApplicationError::RuleNotApplicable),
     }

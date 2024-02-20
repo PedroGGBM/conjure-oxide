@@ -259,8 +259,11 @@
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
+<span class="kw">use </span>conjure_core::metadata::Metadata;
 <span class="kw">use </span>serde_json::Value;
 
 <span class="kw">use </span><span class="kw">crate</span>::ast::{Constant, DecisionVariable, Domain, Expression, Model, Name, Range};
@@ -507,14 +510,15 @@
 
 <span class="kw">fn </span>parse_constant(constant: <span class="kw-2">&amp;</span>serde_json::Map&lt;String, Value&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Expression&gt; {
     <span class="kw">match </span><span class="kw-2">&amp;</span>constant[<span class="string">"Constant"</span>] {
-        Value::Object(int) <span class="kw">if </span>int.contains_key(<span class="string">"ConstantInt"</span>) =&gt; {
-            <span class="prelude-val">Some</span>(Expression::Constant(Constant::Int(
+        Value::Object(int) <span class="kw">if </span>int.contains_key(<span class="string">"ConstantInt"</span>) =&gt; <span class="prelude-val">Some</span>(Expression::Constant(
+            Metadata::new(),
+            Constant::Int(
                 int[<span class="string">"ConstantInt"</span>].as_array()<span class="question-mark">?</span>[<span class="number">1</span>]
                     .as_i64()<span class="question-mark">?
                     </span>.try_into()
                     .unwrap(),
-            )))
-        }
+            ),
+        )),
         otherwise =&gt; <span class="macro">panic!</span>(<span class="string">"Unhandled parse_constant {:#?}"</span>, otherwise),
     }
 }
