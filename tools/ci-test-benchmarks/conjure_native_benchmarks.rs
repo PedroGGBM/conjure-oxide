@@ -23,7 +23,7 @@ fn find_essence_files(dir: &Path) -> Vec<PathBuf> {
 
 fn main() -> io::Result<()> {
     // define directory containing the .essence files
-    let repo_dir = Path::new("https://github.com/conjure-cp/conjure/tree/main/tests/exhaustive");
+    let repo_dir = Path::new("./conjure/tests/exhaustive");
 
     // define directory where output files will be written
     let output_dir = Path::new("./data");
