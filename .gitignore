@@ -16,6 +16,9 @@ conjure_oxide/tests/**/*.generated-minion.*
 debug/
 target/
 
+## Essence solution JSON
+./tools/ci-test-benchmarks/data/*.json
+
 ## C++
 solvers/**/vendor/build
 *.o
