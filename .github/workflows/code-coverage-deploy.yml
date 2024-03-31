@@ -152,7 +152,6 @@ jobs:
         continue-on-error: true
         id: lcov
         run: |
-
           sudo apt-get install -y lcov
           wget https://${{github.repository_owner}}.github.io/conjure-oxide/coverage/main/lcov.info
           lcov --summary lcov.info > cov.txt
