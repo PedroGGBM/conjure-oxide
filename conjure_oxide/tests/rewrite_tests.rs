@@ -1,31 +1,43 @@
-// Tests for rewriting/simplifying parts of the AST
-
-use conjure_core::{metadata::Metadata, rule::Rule};
-use conjure_rules::{get_rule_by_name, get_rules};
 use core::panic;
 use std::collections::HashMap;
+use std::process::exit;
 
-use conjure_oxide::{ast::*, eval_constant, rewrite::rewrite, solvers::FromConjureModel};
-use minion_rs::ast::{Constant as MinionConstant, VarName};
+use conjure_core::context::Context;
+use conjure_core::rules::eval_constant;
+use conjure_core::solver::SolverFamily;
+use conjure_oxide::{
+    ast::*,
+    get_rule_by_name, get_rules,
+    rule_engine::{resolve_rule_sets, rewrite_model},
+    solver::{adaptors, Solver, SolverAdaptor as _},
+    Metadata, Model, Rule,
+};
+use uniplate::uniplate::Uniplate;
 
 #[test]
 fn rules_present() {
-    let rules = conjure_rules::get_rules();
+    let rules = get_rules();
     assert!(!rules.is_empty());
 }
 
 #[test]
 fn sum_of_constants() {
-    let valid_sum_expression = Expression::Sum(vec![
-        Expression::Constant(Metadata::new(), Constant::Int(1)),
-        Expression::Constant(Metadata::new(), Constant::Int(2)),
-        Expression::Constant(Metadata::new(), Constant::Int(3)),
-    ]);
+    let valid_sum_expression = Expression::Sum(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Int(1)),
+            Expression::Constant(Metadata::new(), Constant::Int(2)),
+            Expression::Constant(Metadata::new(), Constant::Int(3)),
+        ],
+    );
 
-    let invalid_sum_expression = Expression::Sum(vec![
-        Expression::Constant(Metadata::new(), Constant::Int(1)),
-        Expression::Reference(Name::UserName(String::from("a"))),
-    ]);
+    let invalid_sum_expression = Expression::Sum(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Int(1)),
+            Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+        ],
+    );
 
     match evaluate_sum_of_constants(&valid_sum_expression) {
         Some(result) => assert_eq!(result, 6),
@@ -39,7 +51,7 @@ fn sum_of_constants() {
 
 fn evaluate_sum_of_constants(expr: &Expression) -> Option<i32> {
     match expr {
-        Expression::Sum(expressions) => {
+        Expression::Sum(_metadata, expressions) => {
             let mut sum = 0;
             for e in expressions {
                 match e {
@@ -58,24 +70,35 @@ fn evaluate_sum_of_constants(expr: &Expression) -> Option<i32> {
 #[test]
 fn recursive_sum_of_constants() {
     let complex_expression = Expression::Eq(
-        Box::new(Expression::Sum(vec![
-            Expression::Constant(Metadata::new(), Constant::Int(1)),
-            Expression::Constant(Metadata::new(), Constant::Int(2)),
-            Expression::Sum(vec![
+        Metadata::new(),
+        Box::new(Expression::Sum(
+            Metadata::new(),
+            vec![
                 Expression::Constant(Metadata::new(), Constant::Int(1)),
                 Expression::Constant(Metadata::new(), Constant::Int(2)),
-            ]),
-            Expression::Reference(Name::UserName(String::from("a"))),
-        ])),
+                Expression::Sum(
+                    Metadata::new(),
+                    vec![
+                        Expression::Constant(Metadata::new(), Constant::Int(1)),
+                        Expression::Constant(Metadata::new(), Constant::Int(2)),
+                    ],
+                ),
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+            ],
+        )),
         Box::new(Expression::Constant(Metadata::new(), Constant::Int(3))),
     );
     let correct_simplified_expression = Expression::Eq(
-        Box::new(Expression::Sum(vec![
-            Expression::Constant(Metadata::new(), Constant::Int(1)),
-            Expression::Constant(Metadata::new(), Constant::Int(2)),
-            Expression::Constant(Metadata::new(), Constant::Int(3)),
-            Expression::Reference(Name::UserName(String::from("a"))),
-        ])),
+        Metadata::new(),
+        Box::new(Expression::Sum(
+            Metadata::new(),
+            vec![
+                Expression::Constant(Metadata::new(), Constant::Int(1)),
+                Expression::Constant(Metadata::new(), Constant::Int(2)),
+                Expression::Constant(Metadata::new(), Constant::Int(3)),
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+            ],
+        )),
         Box::new(Expression::Constant(Metadata::new(), Constant::Int(3))),
     );
 
@@ -85,18 +108,25 @@ fn recursive_sum_of_constants() {
 
 fn simplify_expression(expr: Expression) -> Expression {
     match expr {
-        Expression::Sum(expressions) => {
-            if let Some(result) = evaluate_sum_of_constants(&Expression::Sum(expressions.clone())) {
+        Expression::Sum(_metadata, expressions) => {
+            if let Some(result) =
+                evaluate_sum_of_constants(&Expression::Sum(Metadata::new(), expressions.clone()))
+            {
                 Expression::Constant(Metadata::new(), Constant::Int(result))
             } else {
-                Expression::Sum(expressions.into_iter().map(simplify_expression).collect())
+                Expression::Sum(
+                    Metadata::new(),
+                    expressions.into_iter().map(simplify_expression).collect(),
+                )
             }
         }
-        Expression::Eq(left, right) => Expression::Eq(
+        Expression::Eq(_metadata, left, right) => Expression::Eq(
+            Metadata::new(),
             Box::new(simplify_expression(*left)),
             Box::new(simplify_expression(*right)),
         ),
-        Expression::Geq(left, right) => Expression::Geq(
+        Expression::Geq(_metadata, left, right) => Expression::Geq(
+            Metadata::new(),
             Box::new(simplify_expression(*left)),
             Box::new(simplify_expression(*right)),
         ),
@@ -109,14 +139,23 @@ fn rule_sum_constants() {
     let sum_constants = get_rule_by_name("sum_constants").unwrap();
     let unwrap_sum = get_rule_by_name("unwrap_sum").unwrap();
 
-    let mut expr = Expression::Sum(vec![
-        Expression::Constant(Metadata::new(), Constant::Int(1)),
-        Expression::Constant(Metadata::new(), Constant::Int(2)),
-        Expression::Constant(Metadata::new(), Constant::Int(3)),
-    ]);
+    let mut expr = Expression::Sum(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Int(1)),
+            Expression::Constant(Metadata::new(), Constant::Int(2)),
+            Expression::Constant(Metadata::new(), Constant::Int(3)),
+        ],
+    );
 
-    expr = sum_constants.apply(&expr).unwrap();
-    expr = unwrap_sum.apply(&expr).unwrap();
+    expr = sum_constants
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
+    expr = unwrap_sum
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr,
@@ -128,20 +167,29 @@ fn rule_sum_constants() {
 fn rule_sum_mixed() {
     let sum_constants = get_rule_by_name("sum_constants").unwrap();
 
-    let mut expr = Expression::Sum(vec![
-        Expression::Constant(Metadata::new(), Constant::Int(1)),
-        Expression::Constant(Metadata::new(), Constant::Int(2)),
-        Expression::Reference(Name::UserName(String::from("a"))),
-    ]);
+    let mut expr = Expression::Sum(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Int(1)),
+            Expression::Constant(Metadata::new(), Constant::Int(2)),
+            Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+        ],
+    );
 
-    expr = sum_constants.apply(&expr).unwrap();
+    expr = sum_constants
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr,
-        Expression::Sum(vec![
-            Expression::Reference(Name::UserName(String::from("a"))),
-            Expression::Constant(Metadata::new(), Constant::Int(3)),
-        ])
+        Expression::Sum(
+            Metadata::new(),
+            vec![
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+                Expression::Constant(Metadata::new(), Constant::Int(3)),
+            ]
+        )
     );
 }
 
@@ -150,18 +198,26 @@ fn rule_sum_geq() {
     let flatten_sum_geq = get_rule_by_name("flatten_sum_geq").unwrap();
 
     let mut expr = Expression::Geq(
-        Box::new(Expression::Sum(vec![
-            Expression::Constant(Metadata::new(), Constant::Int(1)),
-            Expression::Constant(Metadata::new(), Constant::Int(2)),
-        ])),
+        Metadata::new(),
+        Box::new(Expression::Sum(
+            Metadata::new(),
+            vec![
+                Expression::Constant(Metadata::new(), Constant::Int(1)),
+                Expression::Constant(Metadata::new(), Constant::Int(2)),
+            ],
+        )),
         Box::new(Expression::Constant(Metadata::new(), Constant::Int(3))),
     );
 
-    expr = flatten_sum_geq.apply(&expr).unwrap();
+    expr = flatten_sum_geq
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr,
         Expression::SumGeq(
+            Metadata::new(),
             vec![
                 Expression::Constant(Metadata::new(), Constant::Int(1)),
                 Expression::Constant(Metadata::new(), Constant::Int(2)),
@@ -169,11 +225,6 @@ fn rule_sum_geq() {
             Box::new(Expression::Constant(Metadata::new(), Constant::Int(3)))
         )
     );
-}
-
-fn callback(solution: HashMap<VarName, MinionConstant>) -> bool {
-    println!("Solution: {:?}", solution);
-    false
 }
 
 ///
@@ -185,21 +236,30 @@ fn callback(solution: HashMap<VarName, MinionConstant>) -> bool {
 /// ```
 #[test]
 fn reduce_solve_xyz() {
-    println!("Rules: {:?}", conjure_rules::get_rules());
+    println!("Rules: {:?}", get_rules());
     let sum_constants = get_rule_by_name("sum_constants").unwrap();
     let unwrap_sum = get_rule_by_name("unwrap_sum").unwrap();
     let lt_to_ineq = get_rule_by_name("lt_to_ineq").unwrap();
     let sum_leq_to_sumleq = get_rule_by_name("sum_leq_to_sumleq").unwrap();
 
     // 2 + 3 - 1
-    let mut expr1 = Expression::Sum(vec![
-        Expression::Constant(Metadata::new(), Constant::Int(2)),
-        Expression::Constant(Metadata::new(), Constant::Int(3)),
-        Expression::Constant(Metadata::new(), Constant::Int(-1)),
-    ]);
+    let mut expr1 = Expression::Sum(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Int(2)),
+            Expression::Constant(Metadata::new(), Constant::Int(3)),
+            Expression::Constant(Metadata::new(), Constant::Int(-1)),
+        ],
+    );
 
-    expr1 = sum_constants.apply(&expr1).unwrap();
-    expr1 = unwrap_sum.apply(&expr1).unwrap();
+    expr1 = sum_constants
+        .apply(&expr1, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
+    expr1 = unwrap_sum
+        .apply(&expr1, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
     assert_eq!(
         expr1,
         Expression::Constant(Metadata::new(), Constant::Int(4))
@@ -207,21 +267,29 @@ fn reduce_solve_xyz() {
 
     // a + b + c = 4
     expr1 = Expression::Leq(
-        Box::new(Expression::Sum(vec![
-            Expression::Reference(Name::UserName(String::from("a"))),
-            Expression::Reference(Name::UserName(String::from("b"))),
-            Expression::Reference(Name::UserName(String::from("c"))),
-        ])),
+        Metadata::new(),
+        Box::new(Expression::Sum(
+            Metadata::new(),
+            vec![
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("b"))),
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("c"))),
+            ],
+        )),
         Box::new(expr1),
     );
-    expr1 = sum_leq_to_sumleq.apply(&expr1).unwrap();
+    expr1 = sum_leq_to_sumleq
+        .apply(&expr1, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
     assert_eq!(
         expr1,
         Expression::SumLeq(
+            Metadata::new(),
             vec![
-                Expression::Reference(Name::UserName(String::from("a"))),
-                Expression::Reference(Name::UserName(String::from("b"))),
-                Expression::Reference(Name::UserName(String::from("c"))),
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("b"))),
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("c"))),
             ],
             Box::new(Expression::Constant(Metadata::new(), Constant::Int(4)))
         )
@@ -229,23 +297,41 @@ fn reduce_solve_xyz() {
 
     // a < b
     let mut expr2 = Expression::Lt(
-        Box::new(Expression::Reference(Name::UserName(String::from("a")))),
-        Box::new(Expression::Reference(Name::UserName(String::from("b")))),
+        Metadata::new(),
+        Box::new(Expression::Reference(
+            Metadata::new(),
+            Name::UserName(String::from("a")),
+        )),
+        Box::new(Expression::Reference(
+            Metadata::new(),
+            Name::UserName(String::from("b")),
+        )),
     );
-    expr2 = lt_to_ineq.apply(&expr2).unwrap();
+    expr2 = lt_to_ineq
+        .apply(&expr2, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
     assert_eq!(
         expr2,
         Expression::Ineq(
-            Box::new(Expression::Reference(Name::UserName(String::from("a")))),
-            Box::new(Expression::Reference(Name::UserName(String::from("b")))),
+            Metadata::new(),
+            Box::new(Expression::Reference(
+                Metadata::new(),
+                Name::UserName(String::from("a"))
+            )),
+            Box::new(Expression::Reference(
+                Metadata::new(),
+                Name::UserName(String::from("b"))
+            )),
             Box::new(Expression::Constant(Metadata::new(), Constant::Int(-1)))
         )
     );
 
-    let mut model = Model {
-        variables: HashMap::new(),
-        constraints: Expression::And(vec![expr1, expr2]),
-    };
+    let mut model = Model::new(
+        HashMap::new(),
+        Expression::And(Metadata::new(), vec![expr1, expr2]),
+        Default::default(),
+    );
     model.variables.insert(
         Name::UserName(String::from("a")),
         DecisionVariable {
@@ -265,21 +351,27 @@ fn reduce_solve_xyz() {
         },
     );
 
-    let minion_model = conjure_oxide::solvers::minion::MinionModel::from_conjure(model).unwrap();
-
-    minion_rs::run_minion(minion_model, callback).unwrap();
+    let solver: Solver<adaptors::Minion> = Solver::new(adaptors::Minion::new());
+    let solver = solver.load_model(model).unwrap();
+    solver.solve(Box::new(|_| true)).unwrap();
 }
 
 #[test]
 fn rule_remove_double_negation() {
     let remove_double_negation = get_rule_by_name("remove_double_negation").unwrap();
 
-    let mut expr = Expression::Not(Box::new(Expression::Not(Box::new(Expression::Constant(
+    let mut expr = Expression::Not(
         Metadata::new(),
-        Constant::Bool(true),
-    )))));
+        Box::new(Expression::Not(
+            Metadata::new(),
+            Box::new(Expression::Constant(Metadata::new(), Constant::Bool(true))),
+        )),
+    );
 
-    expr = remove_double_negation.apply(&expr).unwrap();
+    expr = remove_double_negation
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr,
@@ -291,23 +383,35 @@ fn rule_remove_double_negation() {
 fn rule_unwrap_nested_or() {
     let unwrap_nested_or = get_rule_by_name("unwrap_nested_or").unwrap();
 
-    let mut expr = Expression::Or(vec![
-        Expression::Or(vec![
+    let mut expr = Expression::Or(
+        Metadata::new(),
+        vec![
+            Expression::Or(
+                Metadata::new(),
+                vec![
+                    Expression::Constant(Metadata::new(), Constant::Bool(true)),
+                    Expression::Constant(Metadata::new(), Constant::Bool(false)),
+                ],
+            ),
             Expression::Constant(Metadata::new(), Constant::Bool(true)),
-            Expression::Constant(Metadata::new(), Constant::Bool(false)),
-        ]),
-        Expression::Constant(Metadata::new(), Constant::Bool(true)),
-    ]);
+        ],
+    );
 
-    expr = unwrap_nested_or.apply(&expr).unwrap();
+    expr = unwrap_nested_or
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr,
-        Expression::Or(vec![
-            Expression::Constant(Metadata::new(), Constant::Bool(true)),
-            Expression::Constant(Metadata::new(), Constant::Bool(false)),
-            Expression::Constant(Metadata::new(), Constant::Bool(true)),
-        ])
+        Expression::Or(
+            Metadata::new(),
+            vec![
+                Expression::Constant(Metadata::new(), Constant::Bool(true)),
+                Expression::Constant(Metadata::new(), Constant::Bool(false)),
+                Expression::Constant(Metadata::new(), Constant::Bool(true)),
+            ]
+        )
     );
 }
 
@@ -315,23 +419,35 @@ fn rule_unwrap_nested_or() {
 fn rule_unwrap_nested_and() {
     let unwrap_nested_and = get_rule_by_name("unwrap_nested_and").unwrap();
 
-    let mut expr = Expression::And(vec![
-        Expression::And(vec![
+    let mut expr = Expression::And(
+        Metadata::new(),
+        vec![
+            Expression::And(
+                Metadata::new(),
+                vec![
+                    Expression::Constant(Metadata::new(), Constant::Bool(true)),
+                    Expression::Constant(Metadata::new(), Constant::Bool(false)),
+                ],
+            ),
             Expression::Constant(Metadata::new(), Constant::Bool(true)),
-            Expression::Constant(Metadata::new(), Constant::Bool(false)),
-        ]),
-        Expression::Constant(Metadata::new(), Constant::Bool(true)),
-    ]);
+        ],
+    );
 
-    expr = unwrap_nested_and.apply(&expr).unwrap();
+    expr = unwrap_nested_and
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr,
-        Expression::And(vec![
-            Expression::Constant(Metadata::new(), Constant::Bool(true)),
-            Expression::Constant(Metadata::new(), Constant::Bool(false)),
-            Expression::Constant(Metadata::new(), Constant::Bool(true)),
-        ])
+        Expression::And(
+            Metadata::new(),
+            vec![
+                Expression::Constant(Metadata::new(), Constant::Bool(true)),
+                Expression::Constant(Metadata::new(), Constant::Bool(false)),
+                Expression::Constant(Metadata::new(), Constant::Bool(true)),
+            ]
+        )
     );
 }
 
@@ -339,12 +455,15 @@ fn rule_unwrap_nested_and() {
 fn unwrap_nested_or_not_changed() {
     let unwrap_nested_or = get_rule_by_name("unwrap_nested_or").unwrap();
 
-    let expr = Expression::Or(vec![
-        Expression::Constant(Metadata::new(), Constant::Bool(true)),
-        Expression::Constant(Metadata::new(), Constant::Bool(false)),
-    ]);
+    let expr = Expression::Or(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Bool(true)),
+            Expression::Constant(Metadata::new(), Constant::Bool(false)),
+        ],
+    );
 
-    let result = unwrap_nested_or.apply(&expr);
+    let result = unwrap_nested_or.apply(&expr, &Model::new_empty(Default::default()));
 
     assert!(result.is_err());
 }
@@ -353,12 +472,15 @@ fn unwrap_nested_or_not_changed() {
 fn unwrap_nested_and_not_changed() {
     let unwrap_nested_and = get_rule_by_name("unwrap_nested_and").unwrap();
 
-    let expr = Expression::And(vec![
-        Expression::Constant(Metadata::new(), Constant::Bool(true)),
-        Expression::Constant(Metadata::new(), Constant::Bool(false)),
-    ]);
+    let expr = Expression::And(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Bool(true)),
+            Expression::Constant(Metadata::new(), Constant::Bool(false)),
+        ],
+    );
 
-    let result = unwrap_nested_and.apply(&expr);
+    let result = unwrap_nested_and.apply(&expr, &Model::new_empty(Default::default()));
 
     assert!(result.is_err());
 }
@@ -368,17 +490,23 @@ fn remove_trivial_and_or() {
     let remove_trivial_and = get_rule_by_name("remove_trivial_and").unwrap();
     let remove_trivial_or = get_rule_by_name("remove_trivial_or").unwrap();
 
-    let mut expr_and = Expression::And(vec![Expression::Constant(
+    let mut expr_and = Expression::And(
         Metadata::new(),
-        Constant::Bool(true),
-    )]);
-    let mut expr_or = Expression::Or(vec![Expression::Constant(
+        vec![Expression::Constant(Metadata::new(), Constant::Bool(true))],
+    );
+    let mut expr_or = Expression::Or(
         Metadata::new(),
-        Constant::Bool(false),
-    )]);
+        vec![Expression::Constant(Metadata::new(), Constant::Bool(false))],
+    );
 
-    expr_and = remove_trivial_and.apply(&expr_and).unwrap();
-    expr_or = remove_trivial_or.apply(&expr_or).unwrap();
+    expr_and = remove_trivial_and
+        .apply(&expr_and, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
+    expr_or = remove_trivial_or
+        .apply(&expr_or, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr_and,
@@ -394,13 +522,19 @@ fn remove_trivial_and_or() {
 fn rule_remove_constants_from_or() {
     let remove_constants_from_or = get_rule_by_name("remove_constants_from_or").unwrap();
 
-    let mut expr = Expression::Or(vec![
-        Expression::Constant(Metadata::new(), Constant::Bool(true)),
-        Expression::Constant(Metadata::new(), Constant::Bool(false)),
-        Expression::Reference(Name::UserName(String::from("a"))),
-    ]);
+    let mut expr = Expression::Or(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Bool(true)),
+            Expression::Constant(Metadata::new(), Constant::Bool(false)),
+            Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+        ],
+    );
 
-    expr = remove_constants_from_or.apply(&expr).unwrap();
+    expr = remove_constants_from_or
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr,
@@ -412,13 +546,19 @@ fn rule_remove_constants_from_or() {
 fn rule_remove_constants_from_and() {
     let remove_constants_from_and = get_rule_by_name("remove_constants_from_and").unwrap();
 
-    let mut expr = Expression::And(vec![
-        Expression::Constant(Metadata::new(), Constant::Bool(true)),
-        Expression::Constant(Metadata::new(), Constant::Bool(false)),
-        Expression::Reference(Name::UserName(String::from("a"))),
-    ]);
+    let mut expr = Expression::And(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Bool(true)),
+            Expression::Constant(Metadata::new(), Constant::Bool(false)),
+            Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+        ],
+    );
 
-    expr = remove_constants_from_and.apply(&expr).unwrap();
+    expr = remove_constants_from_and
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr,
@@ -430,12 +570,15 @@ fn rule_remove_constants_from_and() {
 fn remove_constants_from_or_not_changed() {
     let remove_constants_from_or = get_rule_by_name("remove_constants_from_or").unwrap();
 
-    let expr = Expression::Or(vec![
-        Expression::Reference(Name::UserName(String::from("a"))),
-        Expression::Reference(Name::UserName(String::from("b"))),
-    ]);
+    let expr = Expression::Or(
+        Metadata::new(),
+        vec![
+            Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+            Expression::Reference(Metadata::new(), Name::UserName(String::from("b"))),
+        ],
+    );
 
-    let result = remove_constants_from_or.apply(&expr);
+    let result = remove_constants_from_or.apply(&expr, &Model::new_empty(Default::default()));
 
     assert!(result.is_err());
 }
@@ -444,12 +587,15 @@ fn remove_constants_from_or_not_changed() {
 fn remove_constants_from_and_not_changed() {
     let remove_constants_from_and = get_rule_by_name("remove_constants_from_and").unwrap();
 
-    let expr = Expression::And(vec![
-        Expression::Reference(Name::UserName(String::from("a"))),
-        Expression::Reference(Name::UserName(String::from("b"))),
-    ]);
+    let expr = Expression::And(
+        Metadata::new(),
+        vec![
+            Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+            Expression::Reference(Metadata::new(), Name::UserName(String::from("b"))),
+        ],
+    );
 
-    let result = remove_constants_from_and.apply(&expr);
+    let result = remove_constants_from_and.apply(&expr, &Model::new_empty(Default::default()));
 
     assert!(result.is_err());
 }
@@ -458,23 +604,43 @@ fn remove_constants_from_and_not_changed() {
 fn rule_distribute_not_over_and() {
     let distribute_not_over_and = get_rule_by_name("distribute_not_over_and").unwrap();
 
-    let mut expr = Expression::Not(Box::new(Expression::And(vec![
-        Expression::Reference(Name::UserName(String::from("a"))),
-        Expression::Reference(Name::UserName(String::from("b"))),
-    ])));
+    let mut expr = Expression::Not(
+        Metadata::new(),
+        Box::new(Expression::And(
+            Metadata::new(),
+            vec![
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("b"))),
+            ],
+        )),
+    );
 
-    expr = distribute_not_over_and.apply(&expr).unwrap();
+    expr = distribute_not_over_and
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr,
-        Expression::Or(vec![
-            Expression::Not(Box::new(Expression::Reference(Name::UserName(
-                String::from("a")
-            )))),
-            Expression::Not(Box::new(Expression::Reference(Name::UserName(
-                String::from("b")
-            )))),
-        ])
+        Expression::Or(
+            Metadata::new(),
+            vec![
+                Expression::Not(
+                    Metadata::new(),
+                    Box::new(Expression::Reference(
+                        Metadata::new(),
+                        Name::UserName(String::from("a"))
+                    ))
+                ),
+                Expression::Not(
+                    Metadata::new(),
+                    Box::new(Expression::Reference(
+                        Metadata::new(),
+                        Name::UserName(String::from("b"))
+                    ))
+                ),
+            ]
+        )
     );
 }
 
@@ -482,23 +648,43 @@ fn rule_distribute_not_over_and() {
 fn rule_distribute_not_over_or() {
     let distribute_not_over_or = get_rule_by_name("distribute_not_over_or").unwrap();
 
-    let mut expr = Expression::Not(Box::new(Expression::Or(vec![
-        Expression::Reference(Name::UserName(String::from("a"))),
-        Expression::Reference(Name::UserName(String::from("b"))),
-    ])));
+    let mut expr = Expression::Not(
+        Metadata::new(),
+        Box::new(Expression::Or(
+            Metadata::new(),
+            vec![
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+                Expression::Reference(Metadata::new(), Name::UserName(String::from("b"))),
+            ],
+        )),
+    );
 
-    expr = distribute_not_over_or.apply(&expr).unwrap();
+    expr = distribute_not_over_or
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap()
+        .new_expression;
 
     assert_eq!(
         expr,
-        Expression::And(vec![
-            Expression::Not(Box::new(Expression::Reference(Name::UserName(
-                String::from("a")
-            )))),
-            Expression::Not(Box::new(Expression::Reference(Name::UserName(
-                String::from("b")
-            )))),
-        ])
+        Expression::And(
+            Metadata::new(),
+            vec![
+                Expression::Not(
+                    Metadata::new(),
+                    Box::new(Expression::Reference(
+                        Metadata::new(),
+                        Name::UserName(String::from("a"))
+                    ))
+                ),
+                Expression::Not(
+                    Metadata::new(),
+                    Box::new(Expression::Reference(
+                        Metadata::new(),
+                        Name::UserName(String::from("b"))
+                    ))
+                ),
+            ]
+        )
     );
 }
 
@@ -506,11 +692,15 @@ fn rule_distribute_not_over_or() {
 fn rule_distribute_not_over_and_not_changed() {
     let distribute_not_over_and = get_rule_by_name("distribute_not_over_and").unwrap();
 
-    let expr = Expression::Not(Box::new(Expression::Reference(Name::UserName(
-        String::from("a"),
-    ))));
+    let expr = Expression::Not(
+        Metadata::new(),
+        Box::new(Expression::Reference(
+            Metadata::new(),
+            Name::UserName(String::from("a")),
+        )),
+    );
 
-    let result = distribute_not_over_and.apply(&expr);
+    let result = distribute_not_over_and.apply(&expr, &Model::new_empty(Default::default()));
 
     assert!(result.is_err());
 }
@@ -519,11 +709,15 @@ fn rule_distribute_not_over_and_not_changed() {
 fn rule_distribute_not_over_or_not_changed() {
     let distribute_not_over_or = get_rule_by_name("distribute_not_over_or").unwrap();
 
-    let expr = Expression::Not(Box::new(Expression::Reference(Name::UserName(
-        String::from("a"),
-    ))));
+    let expr = Expression::Not(
+        Metadata::new(),
+        Box::new(Expression::Reference(
+            Metadata::new(),
+            Name::UserName(String::from("a")),
+        )),
+    );
 
-    let result = distribute_not_over_or.apply(&expr);
+    let result = distribute_not_over_or.apply(&expr, &Model::new_empty(Default::default()));
 
     assert!(result.is_err());
 }
@@ -532,30 +726,92 @@ fn rule_distribute_not_over_or_not_changed() {
 fn rule_distribute_or_over_and() {
     let distribute_or_over_and = get_rule_by_name("distribute_or_over_and").unwrap();
 
-    let mut expr = Expression::Or(vec![
-        Expression::And(vec![
-            Expression::Reference(Name::MachineName(1)),
-            Expression::Reference(Name::MachineName(2)),
-        ]),
-        Expression::Reference(Name::MachineName(3)),
-    ]);
+    let expr = Expression::Or(
+        Metadata::new(),
+        vec![
+            Expression::And(
+                Metadata::new(),
+                vec![
+                    Expression::Reference(Metadata::new(), Name::MachineName(1)),
+                    Expression::Reference(Metadata::new(), Name::MachineName(2)),
+                ],
+            ),
+            Expression::Reference(Metadata::new(), Name::MachineName(3)),
+        ],
+    );
 
-    expr = distribute_or_over_and.apply(&expr).unwrap();
+    let red = distribute_or_over_and
+        .apply(&expr, &Model::new_empty(Default::default()))
+        .unwrap();
 
     assert_eq!(
-        expr,
-        Expression::And(vec![
-            Expression::Or(vec![
-                Expression::Reference(Name::MachineName(3)),
-                Expression::Reference(Name::MachineName(1)),
-            ]),
-            Expression::Or(vec![
-                Expression::Reference(Name::MachineName(3)),
-                Expression::Reference(Name::MachineName(2)),
-            ]),
-        ]),
+        red.new_expression,
+        Expression::And(
+            Metadata::new(),
+            vec![
+                Expression::Or(
+                    Metadata::new(),
+                    vec![
+                        Expression::Reference(Metadata::new(), Name::MachineName(3)),
+                        Expression::Reference(Metadata::new(), Name::MachineName(1)),
+                    ]
+                ),
+                Expression::Or(
+                    Metadata::new(),
+                    vec![
+                        Expression::Reference(Metadata::new(), Name::MachineName(3)),
+                        Expression::Reference(Metadata::new(), Name::MachineName(2)),
+                    ]
+                ),
+            ]
+        ),
     );
 }
+
+// #[test]
+// fn rule_ensure_div() {
+//     let ensure_div = get_rule_by_name("ensure_div").unwrap();
+
+//     let expr = Expression::Div(
+//         Metadata::new(),
+//         Box::new(Expression::Reference(
+//             Metadata::new(),
+//             Name::UserName("a".to_string()),
+//         )),
+//         Box::new(Expression::Reference(
+//             Metadata::new(),
+//             Name::UserName("b".to_string()),
+//         )),
+//     );
+
+//     let red = ensure_div.apply(&expr, &Model::new_empty(Default::default())).unwrap();
+
+//     assert_eq!(
+//         red.new_expression,
+//         Expression::SafeDiv(
+//             Metadata::new(),
+//             Box::new(Expression::Reference(
+//                 Metadata::new(),
+//                 Name::UserName("a".to_string())
+//             )),
+//             Box::new(Expression::Reference(
+//                 Metadata::new(),
+//                 Name::UserName("b".to_string())
+//             )),
+//         ),
+//     );
+//     assert_eq!(
+//         red.new_top,
+//         Expression::Neq(
+//             Metadata::new(),
+//             Box::new(Expression::Reference(
+//                 Metadata::new(),
+//                 Name::UserName("b".to_string())
+//             )),
+//             Box::new(Expression::Constant(Metadata::new(), Constant::Int(0)))
+//         )
+//     );
+// }
 
 ///
 /// Reduce and solve:
@@ -569,7 +825,16 @@ fn rule_distribute_or_over_and() {
 /// of applying the rules manually.
 #[test]
 fn rewrite_solve_xyz() {
-    println!("Rules: {:?}", conjure_rules::get_rules());
+    println!("Rules: {:?}", get_rules());
+
+    let rule_sets = match resolve_rule_sets(SolverFamily::Minion, &vec!["Constant"]) {
+        Ok(rs) => rs,
+        Err(e) => {
+            eprintln!("Error resolving rule sets: {}", e);
+            exit(1);
+        }
+    };
+    println!("Rule sets: {:?}", rule_sets);
 
     // Create variables and domains
     let variable_a = Name::UserName(String::from("a"));
@@ -578,33 +843,51 @@ fn rewrite_solve_xyz() {
     let domain = Domain::IntDomain(vec![Range::Bounded(1, 3)]);
 
     // Construct nested expression
-    let nested_expr = Expression::And(vec![
-        Expression::Eq(
-            Box::new(Expression::Sum(vec![
-                Expression::Reference(variable_a.clone()),
-                Expression::Reference(variable_b.clone()),
-                Expression::Reference(variable_c.clone()),
-            ])),
-            Box::new(Expression::Constant(Metadata::new(), Constant::Int(4))),
-        ),
-        Expression::Lt(
-            Box::new(Expression::Reference(variable_a.clone())),
-            Box::new(Expression::Reference(variable_b.clone())),
-        ),
-    ]);
+    let nested_expr = Expression::And(
+        Metadata::new(),
+        vec![
+            Expression::Eq(
+                Metadata::new(),
+                Box::new(Expression::Sum(
+                    Metadata::new(),
+                    vec![
+                        Expression::Reference(Metadata::new(), variable_a.clone()),
+                        Expression::Reference(Metadata::new(), variable_b.clone()),
+                        Expression::Reference(Metadata::new(), variable_c.clone()),
+                    ],
+                )),
+                Box::new(Expression::Constant(Metadata::new(), Constant::Int(4))),
+            ),
+            Expression::Lt(
+                Metadata::new(),
+                Box::new(Expression::Reference(Metadata::new(), variable_a.clone())),
+                Box::new(Expression::Reference(Metadata::new(), variable_b.clone())),
+            ),
+        ],
+    );
+
+    let rule_sets = match resolve_rule_sets(SolverFamily::Minion, &vec!["Constant"]) {
+        Ok(rs) => rs,
+        Err(e) => {
+            eprintln!("Error resolving rule sets: {}", e);
+            exit(1);
+        }
+    };
 
     // Apply rewrite function to the nested expression
-    let rewritten_expr = rewrite(&nested_expr);
+    let rewritten_expr = rewrite_model(
+        &Model::new(HashMap::new(), nested_expr, Default::default()),
+        &rule_sets,
+    )
+    .unwrap()
+    .constraints;
 
     // Check if the expression is in its simplest form
     let expr = rewritten_expr.clone();
     assert!(is_simple(&expr));
 
     // Create model with variables and constraints
-    let mut model = Model {
-        variables: HashMap::new(),
-        constraints: rewritten_expr,
-    };
+    let mut model = Model::new(HashMap::new(), rewritten_expr, Default::default());
 
     // Insert variables and domains
     model.variables.insert(
@@ -626,15 +909,14 @@ fn rewrite_solve_xyz() {
         },
     );
 
-    // Convert the model to MinionModel
-    let minion_model = conjure_oxide::solvers::minion::MinionModel::from_conjure(model).unwrap();
-
-    // Run the solver with the rewritten model
-    minion_rs::run_minion(minion_model, callback).unwrap();
+    let solver: Solver<adaptors::Minion> = Solver::new(adaptors::Minion::new());
+    let solver = solver.load_model(model).unwrap();
+    solver.solve(Box::new(|_| true)).unwrap();
 }
 
 struct RuleResult<'a> {
-    rule: Rule<'a>,
+    #[allow(dead_code)]
+    rule: &'a Rule<'a>,
     new_expression: Expression,
 }
 
@@ -655,20 +937,18 @@ pub fn is_simple(expression: &Expression) -> bool {
 /// - None if no rule is applicable to the expression or any sub-expression.
 fn is_simple_iteration<'a>(
     expression: &'a Expression,
-    rules: &'a Vec<Rule<'a>>,
+    rules: &'a Vec<&'a Rule<'a>>,
 ) -> Option<Expression> {
     let rule_results = apply_all_rules(expression, rules);
     if let Some(new) = choose_rewrite(&rule_results) {
         return Some(new);
     } else {
-        match expression.sub_expressions() {
-            None => {}
-            Some(mut sub) => {
-                for i in 0..sub.len() {
-                    if let Some(new) = is_simple_iteration(sub[i], rules) {
-                        sub[i] = &new;
-                        return Some(expression.with_sub_expressions(sub));
-                    }
+        let mut sub = expression.children();
+        for i in 0..sub.len() {
+            if let Some(new) = is_simple_iteration(&sub[i], rules) {
+                sub[i] = new;
+                if let Ok(res) = expression.with_children(sub.clone()) {
+                    return Some(res);
                 }
             }
         }
@@ -681,15 +961,15 @@ fn is_simple_iteration<'a>(
 /// - An empty list if no rules are applicable.
 fn apply_all_rules<'a>(
     expression: &'a Expression,
-    rules: &'a Vec<Rule<'a>>,
+    rules: &'a Vec<&'a Rule<'a>>,
 ) -> Vec<RuleResult<'a>> {
     let mut results = Vec::new();
     for rule in rules {
-        match rule.apply(expression) {
-            Ok(new) => {
+        match rule.apply(expression, &Model::new_empty(Default::default())) {
+            Ok(red) => {
                 results.push(RuleResult {
-                    rule: rule.clone(),
-                    new_expression: new,
+                    rule,
+                    new_expression: red.new_expression,
                 });
             }
             Err(_) => continue,
@@ -701,7 +981,7 @@ fn apply_all_rules<'a>(
 /// # Returns
 /// - Some(<new_expression>) after applying the first rule in `results`.
 /// - None if `results` is empty.
-fn choose_rewrite(results: &Vec<RuleResult>) -> Option<Expression> {
+fn choose_rewrite(results: &[RuleResult]) -> Option<Expression> {
     if results.is_empty() {
         return None;
     }
@@ -726,30 +1006,39 @@ fn eval_const_bool() {
 
 #[test]
 fn eval_const_and() {
-    let expr = Expression::And(vec![
-        Expression::Constant(Metadata::new(), Constant::Bool(true)),
-        Expression::Constant(Metadata::new(), Constant::Bool(false)),
-    ]);
+    let expr = Expression::And(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Bool(true)),
+            Expression::Constant(Metadata::new(), Constant::Bool(false)),
+        ],
+    );
     let result = eval_constant(&expr);
     assert_eq!(result, Some(Constant::Bool(false)));
 }
 
 #[test]
 fn eval_const_ref() {
-    let expr = Expression::Reference(Name::UserName(String::from("a")));
+    let expr = Expression::Reference(Metadata::new(), Name::UserName(String::from("a")));
     let result = eval_constant(&expr);
     assert_eq!(result, None);
 }
 
 #[test]
 fn eval_const_nested_ref() {
-    let expr = Expression::Sum(vec![
-        Expression::Constant(Metadata::new(), Constant::Int(1)),
-        Expression::And(vec![
-            Expression::Constant(Metadata::new(), Constant::Bool(true)),
-            Expression::Reference(Name::UserName(String::from("a"))),
-        ]),
-    ]);
+    let expr = Expression::Sum(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Int(1)),
+            Expression::And(
+                Metadata::new(),
+                vec![
+                    Expression::Constant(Metadata::new(), Constant::Bool(true)),
+                    Expression::Reference(Metadata::new(), Name::UserName(String::from("a"))),
+                ],
+            ),
+        ],
+    );
     let result = eval_constant(&expr);
     assert_eq!(result, None);
 }
@@ -757,6 +1046,7 @@ fn eval_const_nested_ref() {
 #[test]
 fn eval_const_eq_int() {
     let expr = Expression::Eq(
+        Metadata::new(),
         Box::new(Expression::Constant(Metadata::new(), Constant::Int(1))),
         Box::new(Expression::Constant(Metadata::new(), Constant::Int(1))),
     );
@@ -767,6 +1057,7 @@ fn eval_const_eq_int() {
 #[test]
 fn eval_const_eq_bool() {
     let expr = Expression::Eq(
+        Metadata::new(),
         Box::new(Expression::Constant(Metadata::new(), Constant::Bool(true))),
         Box::new(Expression::Constant(Metadata::new(), Constant::Bool(true))),
     );
@@ -777,6 +1068,7 @@ fn eval_const_eq_bool() {
 #[test]
 fn eval_const_eq_mixed() {
     let expr = Expression::Eq(
+        Metadata::new(),
         Box::new(Expression::Constant(Metadata::new(), Constant::Int(1))),
         Box::new(Expression::Constant(Metadata::new(), Constant::Bool(true))),
     );
@@ -786,40 +1078,60 @@ fn eval_const_eq_mixed() {
 
 #[test]
 fn eval_const_sum_mixed() {
-    let expr = Expression::Sum(vec![
-        Expression::Constant(Metadata::new(), Constant::Int(1)),
-        Expression::Constant(Metadata::new(), Constant::Bool(true)),
-    ]);
+    let expr = Expression::Sum(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Int(1)),
+            Expression::Constant(Metadata::new(), Constant::Bool(true)),
+        ],
+    );
     let result = eval_constant(&expr);
     assert_eq!(result, None);
 }
 
 #[test]
 fn eval_const_sum_xyz() {
-    let expr = Expression::And(vec![
-        Expression::Eq(
-            Box::new(Expression::Sum(vec![
-                Expression::Reference(Name::UserName(String::from("x"))),
-                Expression::Reference(Name::UserName(String::from("y"))),
-                Expression::Reference(Name::UserName(String::from("z"))),
-            ])),
-            Box::new(Expression::Constant(Metadata::new(), Constant::Int(4))),
-        ),
-        Expression::Geq(
-            Box::new(Expression::Reference(Name::UserName(String::from("x")))),
-            Box::new(Expression::Reference(Name::UserName(String::from("y")))),
-        ),
-    ]);
+    let expr = Expression::And(
+        Metadata::new(),
+        vec![
+            Expression::Eq(
+                Metadata::new(),
+                Box::new(Expression::Sum(
+                    Metadata::new(),
+                    vec![
+                        Expression::Reference(Metadata::new(), Name::UserName(String::from("x"))),
+                        Expression::Reference(Metadata::new(), Name::UserName(String::from("y"))),
+                        Expression::Reference(Metadata::new(), Name::UserName(String::from("z"))),
+                    ],
+                )),
+                Box::new(Expression::Constant(Metadata::new(), Constant::Int(4))),
+            ),
+            Expression::Geq(
+                Metadata::new(),
+                Box::new(Expression::Reference(
+                    Metadata::new(),
+                    Name::UserName(String::from("x")),
+                )),
+                Box::new(Expression::Reference(
+                    Metadata::new(),
+                    Name::UserName(String::from("y")),
+                )),
+            ),
+        ],
+    );
     let result = eval_constant(&expr);
     assert_eq!(result, None);
 }
 
 #[test]
 fn eval_const_or() {
-    let expr = Expression::Or(vec![
-        Expression::Constant(Metadata::new(), Constant::Bool(false)),
-        Expression::Constant(Metadata::new(), Constant::Bool(false)),
-    ]);
+    let expr = Expression::Or(
+        Metadata::new(),
+        vec![
+            Expression::Constant(Metadata::new(), Constant::Bool(false)),
+            Expression::Constant(Metadata::new(), Constant::Bool(false)),
+        ],
+    );
     let result = eval_constant(&expr);
     assert_eq!(result, Some(Constant::Bool(false)));
 }

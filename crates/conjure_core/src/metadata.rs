@@ -1,9 +1,16 @@
-use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Metadata {
     pub dirtyclean: bool,
+}
+
+impl Default for Metadata {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Metadata {

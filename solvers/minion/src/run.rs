@@ -1,24 +1,27 @@
+#![allow(unreachable_patterns)]
+
 use std::{
     collections::HashMap,
     ffi::CString,
-    sync::atomic::Ordering,
-    sync::{
-        atomic::{self, AtomicBool},
-        Mutex, MutexGuard,
-    },
+    sync::Condvar,
+    sync::{Mutex, MutexGuard},
 };
 
-use crate::ffi::{self, ConstraintType_CT_WATCHED_LESS};
-use crate::{ast::*, error::*, scoped_ptr::Scoped};
 use anyhow::anyhow;
 
-// TODO: allow passing of options.
+use crate::ffi::{self};
+use crate::{ast::*, error::*, scoped_ptr::Scoped};
 
-/// Callback function used to capture results from minion as they are generated.
-/// Should return `true` if search is to continue, `false` otherwise.
+/// The callback function used to capture results from Minion as they are generated.
 ///
-/// Consider using a global mutex (or other static variable) to use these results
-/// elsewhere.
+/// This function is called by Minion whenever a solution is found. The input to this function is
+/// a`HashMap` of all named variables along with their value.
+///
+/// Callbacks should return `true` if search is to continue, `false` otherwise.
+///
+/// # Examples
+///
+/// Consider using a global mutex (or other static variable) to use returned solutions elsewhere.
 ///
 /// For example:
 ///
@@ -110,7 +113,7 @@ static CALLBACK: Mutex<Option<Callback>> = Mutex::new(None);
 // the variables we want to return, and their ordering in the print matrix
 static PRINT_VARS: Mutex<Option<Vec<VarName>>> = Mutex::new(None);
 
-static mut LOCKED: AtomicBool = AtomicBool::new(false);
+static LOCK: (Mutex<bool>, Condvar) = (Mutex::new(false), Condvar::new());
 
 #[no_mangle]
 unsafe extern "C" fn run_callback() -> bool {
@@ -160,12 +163,15 @@ pub fn run_minion(model: Model, callback: Callback) -> Result<(), MinionError> {
     // Mutex poisoning is probably panic worthy.
     *CALLBACK.lock().unwrap() = Some(callback);
 
+    let (lock, condvar) = &LOCK;
+    let mut _lock_guard = condvar
+        .wait_while(lock.lock().unwrap(), |locked| *locked)
+        .unwrap();
+
+    *_lock_guard = true;
+
     unsafe {
         // TODO: something better than a manual spinlock
-        while LOCKED.load(Ordering::SeqCst) {
-            std::hint::spin_loop();
-        }
-        LOCKED.store(true, Ordering::SeqCst);
         let search_opts = ffi::searchOptions_new();
         let search_method = ffi::searchMethod_new();
         let search_instance = ffi::instance_new();
@@ -182,7 +188,11 @@ pub fn run_minion(model: Model, callback: Callback) -> Result<(), MinionError> {
         ffi::searchMethod_free(search_method);
         ffi::searchOptions_free(search_opts);
         ffi::instance_free(search_instance);
-        LOCKED.store(false, Ordering::SeqCst);
+
+        *_lock_guard = false;
+        std::mem::drop(_lock_guard);
+
+        condvar.notify_one();
 
         match res {
             0 => Ok(()),
@@ -675,7 +685,7 @@ unsafe fn read_constant(
     raw_constraint: *mut ffi::ProbSpec_ConstraintBlob,
     constant: &Constant,
 ) -> Result<(), MinionError> {
-    let mut val: i32 = match constant {
+    let val: i32 = match constant {
         Constant::Integer(n) => Ok(*n),
         Constant::Bool(true) => Ok(1),
         Constant::Bool(false) => Ok(0),
@@ -698,6 +708,7 @@ unsafe fn read_constant_list(
             Constant::Integer(n) => Ok(*n),
             Constant::Bool(true) => Ok(1),
             Constant::Bool(false) => Ok(0),
+            #[allow(unreachable_patterns)] // TODO: can there be other types?
             x => Err(MinionError::NotImplemented(format!("{:?}", x))),
         }?;
 

@@ -1,18 +1,34 @@
 {
   "constraints": {
-    "Neq": [
+    "AllDiff": [
       {
-        "Reference": {
-          "UserName": "x"
-        }
+        "dirtyclean": false
       },
-      {
-        "Reference": {
-          "UserName": "y"
+      [
+        {
+          "Reference": [
+            {
+              "dirtyclean": false
+            },
+            {
+              "UserName": "x"
+            }
+          ]
+        },
+        {
+          "Reference": [
+            {
+              "dirtyclean": false
+            },
+            {
+              "UserName": "y"
+            }
+          ]
         }
-      }
+      ]
     ]
   },
+  "next_var": 0,
   "variables": [
     [
       {

@@ -1,7 +1,11 @@
 // Tests for various functionalities of the Model
 
-use conjure_oxide::ast::*;
 use std::collections::HashMap;
+
+use conjure_core::context::Context;
+use conjure_core::metadata::Metadata;
+use conjure_core::model::Model;
+use conjure_oxide::ast::*;
 
 #[test]
 fn modify_domain() {
@@ -13,10 +17,11 @@ fn modify_domain() {
     let mut variables = HashMap::new();
     variables.insert(a.clone(), DecisionVariable { domain: d1.clone() });
 
-    let mut m = Model {
+    let mut m = Model::new(
         variables,
-        constraints: Expression::And(Vec::new()),
-    };
+        Expression::And(Metadata::new(), Vec::new()),
+        Default::default(),
+    );
 
     assert_eq!(m.variables.get(&a).unwrap().domain, d1);
 

@@ -4,7 +4,6 @@ resolver = "2"
 default-members = [
     "conjure_oxide",
     "crates/conjure_core",
-    "crates/conjure_rules",
     "solvers/kissat",
     "solvers/minion",
     "crates/uniplate",
@@ -13,10 +12,10 @@ default-members = [
 members = [
     "conjure_oxide",
     "crates/conjure_core",
-    "crates/doc_solver_support",
-    "crates/conjure_rules_proc_macro",
-    "crates/conjure_rules",
+    "crates/enum_compatability_macro",
+    "crates/conjure_macros",
     "crates/uniplate",
+    "crates/uniplate_derive",
     "solvers/kissat",
     "solvers/minion",
     "solvers/chuffed",
