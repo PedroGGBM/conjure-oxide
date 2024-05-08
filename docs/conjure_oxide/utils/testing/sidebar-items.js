@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["assert_eq_any_order","minion_solutions_from_json","read_minion_solutions_json","read_model_json","save_minion_solutions_json","save_model_json","save_stats_json","serialise_model"]};

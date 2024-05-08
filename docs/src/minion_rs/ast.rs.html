@@ -1,6 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `solvers/minion/src/ast.rs`."><title>ast.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="minion_rs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0-nightly (3246e7951 2024-02-19)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c37d3936c59ababd.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
-            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../minion_rs/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `solvers/minion/src/ast.rs`."><title>ast.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="minion_rs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.0-nightly (faefc618c 2024-05-07)" data-channel="nightly" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -176,7 +174,32 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! The Model Syntax tree for the Minion bindings.
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! Types used for representing Minion models in Rust.
 
 </span><span class="kw">use </span>std::collections::HashMap;
 
@@ -184,14 +207,17 @@
 <span class="kw">pub type </span>Tuple = (Constant, Constant);
 <span class="kw">pub type </span>TwoVars = (Var, Var);
 
-<span class="kw">pub struct </span>Model {
-    <span class="doccomment">/// A lookup table of all named variables.
-    </span><span class="kw">pub </span>named_variables: SymbolTable,
+<span class="doccomment">/// A Minion model.
+</span><span class="attr">#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>Model {
+    <span class="kw">pub </span>named_variables: SymbolTable,
     <span class="kw">pub </span>constraints: Vec&lt;Constraint&gt;,
 }
 
 <span class="kw">impl </span>Model {
-    <span class="kw">pub fn </span>new() -&gt; Model {
+    <span class="doccomment">/// Creates an empty Minion model.
+    </span><span class="kw">pub fn </span>new() -&gt; Model {
         Model {
             named_variables: SymbolTable::new(),
             constraints: Vec::new(),
@@ -205,8 +231,9 @@
     }
 }
 
-<span class="attr">#[derive(Debug, Clone)]
-#[non_exhaustive]
+<span class="doccomment">/// All supported Minion constraints.
+</span><span class="attr">#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>Constraint {
     Difference(TwoVars, Var),
     Div(TwoVars, Var),
@@ -287,24 +314,30 @@
     Ineq(Var, Var, Constant),
 }
 
-<span class="doccomment">/// A variable can either be a named variable, or an anomynous "constant as a variable".
+<span class="doccomment">/// Representation of a Minion Variable.
+///
+/// A variable can either be a named variable, or an anomynous "constant as a variable".
 ///
 /// The latter is not stored in the symbol table, or counted in Minions internal list of all
 /// variables, but is used to allow the use of a constant in the place of a variable in a
 /// constraint.
-</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="attr">#[derive(Debug, Clone, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>Var {
     NameRef(VarName),
     ConstantAsVar(i32),
 }
 
-<span class="attr">#[derive(Debug, Eq, PartialEq, Clone)]
+<span class="doccomment">/// Representation of a Minion constant.
+</span><span class="attr">#[non_exhaustive]
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 </span><span class="kw">pub enum </span>Constant {
     Bool(bool),
     Integer(i32),
 }
 
-<span class="attr">#[derive(Debug, Copy, Clone)]
+<span class="doccomment">/// Representation of variable domains.
+</span><span class="attr">#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[non_exhaustive]
 </span><span class="kw">pub enum </span>VarDomain {
     Bound(i32, i32),
     Discrete(i32, i32),
@@ -312,7 +345,13 @@
     Bool,
 }
 
-<span class="kw">pub struct </span>SymbolTable {
+<span class="attr">#[derive(Debug, Clone, Eq, PartialEq)]
+#[non_exhaustive]
+</span><span class="doccomment">/// Stores all named variables in a Minion model alongside their domains.
+///
+/// Named variables referenced in [constraints](Constraint) must be in the symbol table for the
+/// model to be valid. In the future, this will raise some sort of type error.
+</span><span class="kw">pub struct </span>SymbolTable {
     table: HashMap&lt;VarName, VarDomain&gt;,
 
     <span class="comment">// for now doubles both as Minion's SearchOrder and print order
@@ -328,7 +367,10 @@
     }
 
     <span class="doccomment">/// Creates a new variable and adds it to the symbol table.
-    /// If a variable already exists with the given name, an error is thrown.
+    ///
+    /// # Returns
+    ///
+    /// If a variable already exists with the given name, `None` is returned.
     </span><span class="kw">pub fn </span>add_var(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: VarName, vartype: VarDomain) -&gt; <span class="prelude-ty">Option</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.table.contains_key(<span class="kw-2">&amp;</span>name) {
             <span class="kw">return </span><span class="prelude-val">None</span>;
@@ -340,11 +382,17 @@
         <span class="prelude-val">Some</span>(())
     }
 
-    <span class="kw">pub fn </span>get_vartype(<span class="kw-2">&amp;</span><span class="self">self</span>, name: VarName) -&gt; <span class="prelude-ty">Option</span>&lt;VarDomain&gt; {
+    <span class="doccomment">/// Gets the domain of a named variable.
+    ///
+    /// # Returns
+    ///
+    /// `None` if no variable is known by that name.
+    </span><span class="kw">pub fn </span>get_vartype(<span class="kw-2">&amp;</span><span class="self">self</span>, name: VarName) -&gt; <span class="prelude-ty">Option</span>&lt;VarDomain&gt; {
         <span class="self">self</span>.table.get(<span class="kw-2">&amp;</span>name).cloned()
     }
 
-    <span class="kw">pub fn </span>get_variable_order(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;VarName&gt; {
+    <span class="doccomment">/// Gets the canonical ordering of variables.
+    </span><span class="kw">pub fn </span>get_variable_order(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;VarName&gt; {
         <span class="self">self</span>.var_order.clone()
     }
 

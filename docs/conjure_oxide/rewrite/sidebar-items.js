@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["rewrite","rewrite_model"]};

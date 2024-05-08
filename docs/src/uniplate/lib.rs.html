@@ -1,6 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/uniplate/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="uniplate" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0-nightly (3246e7951 2024-02-19)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c37d3936c59ababd.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
-            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../uniplate/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/uniplate/src/lib.rs`."><title>lib.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="uniplate" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.0-nightly (faefc618c 2024-05-07)" data-channel="nightly" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -109,6 +107,12 @@
 <a href="#107" id="107">107</a>
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A port of Haskell's [Uniplate](https://hackage.haskell.org/package/uniplate) in Rust.
 //!
 //!
@@ -139,7 +143,7 @@
 //! evaluate the encoded equation.
 //!
 //!```
-//! use uniplate::uniplate::Uniplate;
+//! use uniplate::uniplate::{Uniplate, UniplateError};
 //!
 //! #[derive(Clone,Eq,PartialEq,Debug)]
 //! pub enum AST {
@@ -152,13 +156,13 @@
 //!
 //! // In the future would be automatically derived.
 //! impl Uniplate for AST {
-//!     fn uniplate(&amp;self) -&gt; (Vec&lt;AST&gt;, Box&lt;dyn Fn(Vec&lt;AST&gt;) -&gt; AST +'_&gt;) {
-//!         let context: Box&lt;dyn Fn(Vec&lt;AST&gt;) -&gt; AST&gt; = match self {
-//!             AST::Int(i) =&gt;    Box::new(|_| AST::Int(*i)),
-//!             AST::Add(_, _) =&gt; Box::new(|exprs: Vec&lt;AST&gt;| AST::Add(Box::new(exprs[0].clone()),Box::new(exprs[1].clone()))),
-//!             AST::Sub(_, _) =&gt; Box::new(|exprs: Vec&lt;AST&gt;| AST::Sub(Box::new(exprs[0].clone()),Box::new(exprs[1].clone()))),
-//!             AST::Div(_, _) =&gt; Box::new(|exprs: Vec&lt;AST&gt;| AST::Div(Box::new(exprs[0].clone()),Box::new(exprs[1].clone()))),
-//!             AST::Mul(_, _) =&gt; Box::new(|exprs: Vec&lt;AST&gt;| AST::Mul(Box::new(exprs[0].clone()),Box::new(exprs[1].clone())))
+//!     fn uniplate(&amp;self) -&gt; (Vec&lt;AST&gt;, Box&lt;dyn Fn(Vec&lt;AST&gt;) -&gt; Result&lt;AST, UniplateError&gt; +'_&gt;) {
+//!         let context: Box&lt;dyn Fn(Vec&lt;AST&gt;) -&gt; Result&lt;AST, UniplateError&gt;&gt; = match self {
+//!             AST::Int(i) =&gt;    Box::new(|_| Ok(AST::Int(*i))),
+//!             AST::Add(_, _) =&gt; Box::new(|exprs: Vec&lt;AST&gt;| Ok(AST::Add(Box::new(exprs[0].clone()),Box::new(exprs[1].clone())))),
+//!             AST::Sub(_, _) =&gt; Box::new(|exprs: Vec&lt;AST&gt;| Ok(AST::Sub(Box::new(exprs[0].clone()),Box::new(exprs[1].clone())))),
+//!             AST::Div(_, _) =&gt; Box::new(|exprs: Vec&lt;AST&gt;| Ok(AST::Div(Box::new(exprs[0].clone()),Box::new(exprs[1].clone())))),
+//!             AST::Mul(_, _) =&gt; Box::new(|exprs: Vec&lt;AST&gt;| Ok(AST::Mul(Box::new(exprs[0].clone()),Box::new(exprs[1].clone()))))
 //!         };
 //!
 //!         let children: Vec&lt;AST&gt; = match self {
@@ -176,14 +180,14 @@
 //! pub fn my_rule(e: AST) -&gt; AST{
 //!     match e {
 //!         AST::Int(a) =&gt; AST::Int(a),
-//!         AST::Add(a,b) =&gt; {match (&amp;*a,&amp;*b) { (AST::Int(a), AST::Int(b)) =&gt; AST::Int(a+b), _ =&gt; AST::Add(a,b) }},
-//!         AST::Sub(a,b) =&gt; {match (&amp;*a,&amp;*b) { (AST::Int(a), AST::Int(b)) =&gt; AST::Int(a-b), _ =&gt; AST::Sub(a,b) }},
-//!         AST::Mul(a,b) =&gt; {match (&amp;*a,&amp;*b) { (AST::Int(a), AST::Int(b)) =&gt; AST::Int(a*b), _ =&gt; AST::Mul(a,b) }},
+//!         AST::Add(a,b) =&gt; {match (&amp;*a,&amp;*b) { (AST::Int(a), AST::Int(b)) =&gt; AST::Int(a+b), _ =&gt; AST::Add(a,b) }}
+//!         AST::Sub(a,b) =&gt; {match (&amp;*a,&amp;*b) { (AST::Int(a), AST::Int(b)) =&gt; AST::Int(a-b), _ =&gt; AST::Sub(a,b) }}
+//!         AST::Mul(a,b) =&gt; {match (&amp;*a,&amp;*b) { (AST::Int(a), AST::Int(b)) =&gt; AST::Int(a*b), _ =&gt; AST::Mul(a,b) }}
 //!         AST::Div(a,b) =&gt; {match (&amp;*a,&amp;*b) { (AST::Int(a), AST::Int(b)) =&gt; AST::Int(a/b), _ =&gt; AST::Div(a,b) }}
 //!     }
 //! }
 //! pub fn main() {
-//!     let mut ast = AST::Add(
+//!     let ast = AST::Add(
 //!                 Box::new(AST::Int(1)),
 //!                 Box::new(AST::Mul(
 //!                     Box::new(AST::Int(2)),
@@ -192,9 +196,10 @@
 //!                         Box::new(AST::Int(3))
 //!                     )))));
 //!
-//!     ast = ast.transform(my_rule);
-//!     println!("{:?}",ast);
-//!     assert_eq!(ast,AST::Int(3));
+//!     let new_ast = ast.transform(my_rule);
+//!     assert!(new_ast.is_ok());
+//!     println!("{:?}",new_ast);
+//!     assert_eq!(new_ast.unwrap(), AST::Int(3));
 //! }
 //! ```
 //!
@@ -215,7 +220,12 @@
 //! * Huet G. The Zipper. Journal of Functional Programming. 1997;7(5):549–54. &lt;https://doi.org/10.1017/S0956796897002864&gt;
 //! [(free copy)](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/0C058890B8A9B588F26E6D68CF0CE204/S0956796897002864a.pdf/zipper.pdf)
 
-//!
+</span><span class="kw">pub mod </span>biplate;
+<span class="kw">mod </span>tree;
+<span class="kw">pub mod </span>uniplate;
 
-</span><span class="kw">pub mod </span>uniplate;
+<span class="kw">pub use </span>tree::Tree;
+
+<span class="attr">#[doc(hidden)]
+</span><span class="kw">pub mod </span>test_common;
 </code></pre></div></section></main></body></html>

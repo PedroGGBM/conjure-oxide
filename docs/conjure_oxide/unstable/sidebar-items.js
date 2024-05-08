@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["solver_interface"]};

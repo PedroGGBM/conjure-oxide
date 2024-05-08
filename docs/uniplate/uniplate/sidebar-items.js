@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["Uniplate"]};
+window.SIDEBAR_ITEMS = {"enum":["UniplateError"],"trait":["Uniplate"]};

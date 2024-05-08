@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["uniplate"]};
+window.SIDEBAR_ITEMS = {"enum":["Tree"],"mod":["biplate","uniplate"]};
